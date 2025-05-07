@@ -1,0 +1,27 @@
+{
+  "name": "vocabulary-brick-breaker",
+  "version": "1.0.0",
+  "description": "어휘 학습과 게임을 결합한 교육용 웹 애플리케이션",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "game",
+    "education",
+    "vocabulary",
+    "brick-breaker"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.4.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+} 

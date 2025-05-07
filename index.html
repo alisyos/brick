@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>어휘 벽돌깨기 게임</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <meta name="theme-color" content="#4361ee">
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1>어휘 벽돌깨기</h1>
+            <div class="game-stats">
+                <span class="score">점수: <span id="score">0</span></span>
+                <span class="lives">남은 기회: <span id="lives">3</span></span>
+            </div>
+        </div>
+        
+        <div class="game-content">
+            <div class="game-area">
+                <canvas id="gameCanvas" width="800" height="600"></canvas>
+                
+                <div id="api-setup" class="api-setup">
+                    <div class="prompt-content">
+                        <h2>게임 설정</h2>
+                        <p>학습하고 싶은 주제를 선택하면<br>AI가 최적화된 어휘를 생성합니다</p>
+                        <select id="topic-select">
+                            <option value="math">수학</option>
+                            <option value="science">과학</option>
+                            <option value="english">영어</option>
+                            <option value="history">역사</option>
+                        </select>
+                        <div class="game-mode-buttons">
+                            <button id="start-with-api">AI 단어로 시작하기</button>
+                            <button id="start-with-default">기본 단어로 시작하기</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 단어 입력 섹션을 오른쪽으로 이동 -->
+            <div class="word-panel">
+                <div id="word-prompt" class="hidden">
+                    <div class="prompt-content">
+                        <div class="prompt-header">
+                            <h3>문제 단어</h3>
+                            <div class="word-display-box">
+                                <div id="word-display"></div>
+                            </div>
+                        </div>
+                        <div class="prompt-input">
+                            <p>위 단어의 뜻을 입력하세요:</p>
+                            <div class="input-group">
+                                <input type="text" id="answer-input" placeholder="뜻 입력...">
+                                <button id="submit-answer">정답 제출</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="game-controls">
+                    <button id="start-game">게임 시작</button>
+                </div>
+                
+                <div class="game-instructions">
+                    <h3>게임 방법</h3>
+                    <ul>
+                        <li>🎮 방향키로 패들을 움직이세요</li>
+                        <li>🧠 단어 뜻을 맞추면 벽돌이 제거됩니다</li>
+                        <li>🌟 위로 갈수록 어려운 단어가 나옵니다</li>
+                        <li>⚡ 모든 벽돌을 제거하면 게임 클리어!</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <footer class="game-footer">
+            <div class="instructions">
+                <p>© 2023 어휘 벽돌깨기 - 게임으로 즐기는 어휘 학습</p>
+            </div>
+        </footer>
+
+        <div id="debug-area" style="display: none;">
+            <div>
+                <h4 style="margin: 0; font-size: 14px;">현재 단어:</h4>
+                <div id="current-word-debug"></div>
+            </div>
+            <div style="display: none;">
+                <button id="test-display">단어 표시 테스트</button>
+                <input type="text" id="test-word" placeholder="테스트할 단어 입력">
+            </div>
+            <div id="debug-output" style="display: none;"></div>
+        </div>
+    </div>
+    
+    <!-- 로딩 화면 -->
+    <div id="loading-screen" class="loading-message hidden">
+        <div class="message-text">
+            <p id="loading-message-text">AI가 단어를 준비하고 있어요...</p>
+            <div id="api-action" class="api-action hidden">단어 데이터를 불러오는 중...</div>
+        </div>
+        <div class="spinner"></div>
+    </div>
+    
+    <!-- 기본 스크립트 -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    
+    <!-- 디버그 스크립트 -->
+    <script>
+    // 디버그 기능 초기화
+    document.addEventListener('DOMContentLoaded', function() {
+        const debugOutput = document.getElementById('debug-output');
+        const testDisplayBtn = document.getElementById('test-display');
+        const testWordInput = document.getElementById('test-word');
+        const currentWordDebug = document.getElementById('current-word-debug');
+        
+        // 콘솔 오버라이드
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        
+        console.log = function() {
+            originalConsoleLog.apply(console, arguments);
+            const args = Array.from(arguments);
+            debugOutput.innerHTML += `LOG: ${args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ')}\n`;
+            debugOutput.scrollTop = debugOutput.scrollHeight;
+        };
+        
+        console.error = function() {
+            originalConsoleError.apply(console, arguments);
+            const args = Array.from(arguments);
+            debugOutput.innerHTML += `ERROR: ${args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ')}\n`;
+            debugOutput.scrollTop = debugOutput.scrollHeight;
+        };
+        
+        // 테스트 버튼 기능
+        testDisplayBtn.addEventListener('click', function() {
+            const testWord = testWordInput.value || "테스트 단어";
+            displayWord(testWord);
+            console.log('테스트 단어 표시: ' + testWord);
+        });
+        
+        // 단어 표시 함수 - 전역으로 노출
+        window.displayWord = function(word) {
+            console.log('displayWord 호출됨: ' + word);
+            
+            try {
+                // 디버그 영역
+                currentWordDebug.textContent = word;
+                
+                // 단어 표시 영역 - 직접 설정
+                document.getElementById('word-display').innerHTML = word;
+                
+                // 단어 프롬프트 창 표시 - 새 레이아웃에 맞게 수정
+                const wordPrompt = document.getElementById('word-prompt');
+                wordPrompt.classList.remove('hidden');
+                
+                console.log('단어 표시 성공: ' + word);
+                return true;
+            } catch (err) {
+                console.error('단어 표시 오류: ' + err.message);
+                return false;
+            }
+        };
+        
+        console.log('디버그 기능 초기화 완료');
+    });
+    </script>
+    
+    <!-- 게임 스크립트 -->
+    <script src="game.js?v=2.3"></script>
+</body>
+</html> 
