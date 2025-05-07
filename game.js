@@ -27,7 +27,9 @@ let canvas, ctx, startButton, wordPrompt, targetWordElement,
     apiSetup, topicSelect, startWithApiButton, startWithDefaultButton, loadingScreen;
 
 // 서버 API 기본 URL
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:3000/api' 
+    : '/api';
 
 // 게임 상태 변수
 let gameStarted = false;
