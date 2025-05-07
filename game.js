@@ -436,13 +436,6 @@ function checkAnswer() {
                 
                 // 게임 다시 시작 (공을 움직이게 함)
                 ballInMotion = true;
-                
-                // 설명이 있으면 알림과 함께 표시
-                if (lastAnswerExplanation) {
-                    alert(`정답입니다!\n\n${lastAnswerExplanation}`);
-                } else {
-                    alert("정답입니다!");
-                }
             } else {
                 // 오답인 경우
                 answerInput.classList.add('shake');
@@ -536,9 +529,6 @@ function fallbackAnswerCheck(userAnswer, correctAnswer, currentTargetBrick) {
         
         // 게임 다시 시작 (공을 움직이게 함)
         ballInMotion = true;
-        
-        // 설명이 있으면 알림과 함께 표시
-        alert(`정답입니다!\n\n${explanation}`);
     } else {
         // 오답인 경우
         answerInput.classList.add('shake');
