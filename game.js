@@ -258,6 +258,11 @@ async function startGameWithApi() {
             loadingScreen.classList.add('hidden');
             document.getElementById('api-action').classList.add('hidden');
             
+            // 기존 게임 루프가 있다면 중단
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
             startGame();
         } else {
             console.error('API 응답이 올바른 형식이 아닙니다:', response.data);
@@ -268,6 +273,11 @@ async function startGameWithApi() {
             loadingScreen.classList.add('hidden');
             document.getElementById('api-action').classList.add('hidden');
             
+            // 기존 게임 루프가 있다면 중단
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
             startGame();
         }
     } catch (error) {
@@ -279,6 +289,11 @@ async function startGameWithApi() {
         loadingScreen.classList.add('hidden');
         document.getElementById('api-action').classList.add('hidden');
         
+        // 기존 게임 루프가 있다면 중단
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
         startGame();
     }
 }
@@ -317,6 +332,10 @@ function updateAiIndicator() {
 function startGameWithDefault() {
     useGptApi = false;
     vocabularyData = defaultVocabularyData;
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
     startGame();
 }
 
@@ -408,17 +427,10 @@ function checkAnswer() {
                 scoreElement.textContent = score;
                 console.log('점수 증가:', score);
                 
-                // 벽돌 제거
-                currentTargetBrick.status = 0;
-                console.log('벽돌 상태 변경:', currentTargetBrick);
-                
-                // 파티클 효과 생성
-                createParticleEffect(currentTargetBrick.x + brickWidth/2, currentTargetBrick.y + brickHeight/2, 20, currentTargetBrick.color);
-                
-                // 공 방향 전환
+                // 벽돌은 제거하지 않고 공을 발사
                 aimBallAtBrick(currentTargetBrick);
                 
-                // 단어 프롬프트 숨기기 - 새 레이아웃에서는 클래스만 추가
+                // 단어 프롬프트 숨기기
                 wordPrompt.classList.add('hidden');
                 answerInput.value = '';
                 
@@ -430,12 +442,6 @@ function checkAnswer() {
                     alert(`정답입니다!\n\n${lastAnswerExplanation}`);
                 } else {
                     alert("정답입니다!");
-                }
-                
-                // 모든 벽돌이 제거되었는지 확인
-                if (checkLevelComplete()) {
-                    alert("레벨 클리어!");
-                    startGame(); // 새 게임 시작
                 }
             } else {
                 // 오답인 경우
@@ -521,17 +527,10 @@ function fallbackAnswerCheck(userAnswer, correctAnswer, currentTargetBrick) {
         scoreElement.textContent = score;
         console.log('점수 증가:', score);
         
-        // 벽돌 제거
-        currentTargetBrick.status = 0;
-        console.log('벽돌 상태 변경:', currentTargetBrick);
-        
-        // 파티클 효과 생성
-        createParticleEffect(currentTargetBrick.x + brickWidth/2, currentTargetBrick.y + brickHeight/2, 20, currentTargetBrick.color);
-        
-        // 공 방향 전환
+        // 벽돌은 제거하지 않고 공을 발사
         aimBallAtBrick(currentTargetBrick);
         
-        // 단어 프롬프트 숨기기 - 새 레이아웃에서는 클래스만 추가
+        // 단어 프롬프트 숨기기
         wordPrompt.classList.add('hidden');
         answerInput.value = '';
         
@@ -540,12 +539,6 @@ function fallbackAnswerCheck(userAnswer, correctAnswer, currentTargetBrick) {
         
         // 설명이 있으면 알림과 함께 표시
         alert(`정답입니다!\n\n${explanation}`);
-        
-        // 모든 벽돌이 제거되었는지 확인
-        if (checkLevelComplete()) {
-            alert("레벨 클리어!");
-            startGame(); // 새 게임 시작
-        }
     } else {
         // 오답인 경우
         answerInput.classList.add('shake');
@@ -597,69 +590,51 @@ function aimBallAtBrick(brick) {
 
 // 게임 시작 함수
 function startGame() {
+    // 기존 게임 루프가 있다면 중단
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
     // 게임 상태 초기화
     gameStarted = true;
     score = 0;
     lives = 3;
     scoreElement.textContent = score;
     livesElement.textContent = lives;
-    
     // API 설정 패널 숨기기
     apiSetup.classList.add('hidden');
-    
-    // 버튼 상태 업데이트
-    startButton.disabled = true;
-    
+    // 버튼 상태 업데이트 (disabled 제거)
+    startButton.disabled = false;
     // AI 사용 여부 표시
     updateAiIndicator();
-    
     // 벽돌 초기화
     initializeBricks();
-    
     // 공과 패들 초기화
     resetBall();
     paddleX = (canvas.width - paddleWidth) / 2;
-    
     // 게임 시작 시 첫 번째 단어 선택 (쉬운 단어부터 시작)
     console.log('게임 시작 - 첫 번째 단어 선택');
-    
-    // 가장 쉬운 단어를 선택 (마지막 행의 첫 번째 벽돌)
     if (bricks[2] && bricks[2][0] && bricks[2][0].status === 1) {
         targetBrick = bricks[2][0];
         window.targetBrick = targetBrick;
-        
-        console.log('첫 번째 단어 선택:', targetBrick.word);
-        
-        // 단어 직접 표시
         try {
             document.getElementById('word-display').innerHTML = targetBrick.word;
-            
-            // 프롬프트는 하단에 표시
             const wordPromptEl = document.getElementById('word-prompt');
             wordPromptEl.classList.remove('hidden');
-            
-            // 디버그 영역에도 표시
             const debugEl = document.getElementById('current-word-debug');
             if (debugEl) debugEl.textContent = targetBrick.word;
-            
-            // 단어 표시 시에도 게임 계속 실행 (공은 정지)
             ballInMotion = false;
-            
-            // 포커스 설정
             setTimeout(() => {
                 const answerInput = document.getElementById('answer-input');
                 if (answerInput) answerInput.focus();
             }, 100);
-            
             console.log('단어 표시 성공: ' + targetBrick.word);
         } catch (err) {
             console.error('단어 표시 오류: ' + err.message);
         }
     } else {
-        console.warn('첫 번째 벽돌을 찾을 수 없음, 무작위 선택 시도');
         selectRandomBrick();
     }
-    
     // 게임 루프 시작
     requestAnimationFrame(gameLoop);
 }
@@ -898,62 +873,47 @@ function detectCollisions() {
         if (ballX > paddleX && ballX < paddleX + paddleWidth) {
             // 패들에 부딪히면 위로 튕김
             ballSpeedY = -ballSpeedY;
-            
             // 패들의 어느 부분에 맞았는지에 따라 X축 속도 조정
             const hitPoint = (ballX - (paddleX + paddleWidth/2)) / (paddleWidth/2);
-            ballSpeedX = hitPoint * 5; // 패들 끝에 맞을수록 더 큰 각도로 튕김
+            ballSpeedX = hitPoint * 5;
+            // 공이 패들에 맞았을 때만 다음 단어로 진행
+            selectRandomBrick();
+            ballInMotion = false;
         } else {
             // 공을 놓쳐서 생명력 감소
             lives--;
             livesElement.textContent = lives;
-            
             if (lives <= 0) {
-                // 게임 오버
                 alert("게임 오버!");
                 gameStarted = false;
                 document.location.reload();
                 return;
             } else {
-                // 공과 패들 리셋
                 resetBall();
                 paddleX = (canvas.width - paddleWidth) / 2;
-                
-                // 다시 단어 선택하게 함
                 selectRandomBrick();
             }
         }
     }
-    
     // 벽돌과의 충돌
     for (let r = 0; r < brickRowCount; r++) {
         for (let c = 0; c < brickColumnCount; c++) {
             const brick = bricks[r][c];
-            
             if (brick && brick.status === 1) {
-                // 충돌 체크
                 if (ballX > brick.x && ballX < brick.x + brickWidth &&
                     ballY > brick.y && ballY < brick.y + brickHeight) {
-                    
-                    console.log('벽돌과 충돌 발생! 벽돌 정보:', brick);
-                    
-                    // 공의 방향 전환
                     ballSpeedY = -ballSpeedY;
-                    
-                    // 공이 움직이지 않게 하고 단어 프롬프트 표시
-                    ballInMotion = false;
-                    
-                    // targetBrick 변수에 할당 (전역 변수와 로컬 변수 모두 동일하게 유지)
-                    targetBrick = brick;
-                    window.targetBrick = brick;
-                    
-                    console.log('targetBrick 설정됨:', targetBrick);
-                    console.log('window.targetBrick 설정됨:', window.targetBrick);
-                    console.log('벽돌 단어:', brick.word);
-                    
-                    // 단어 프롬프트 표시 함수 호출
-                    showWordPrompt(brick);
-                    
-                    return; // 충돌 감지 후 함수 종료 (복수 충돌 방지)
+                    if (brick === targetBrick) {
+                        brick.status = 0;
+                        createParticleEffect(brick.x + brickWidth/2, brick.y + brickHeight/2, 20, brick.color);
+                        if (checkLevelComplete()) {
+                            alert("레벨 클리어!");
+                            startGame();
+                            return;
+                        }
+                        // 다음 단어 선택은 여기서 하지 않음!
+                    }
+                    return;
                 }
             }
         }
@@ -963,31 +923,50 @@ function detectCollisions() {
 // 무작위 벽돌 선택 함수
 function selectRandomBrick() {
     console.log('무작위 벽돌 선택 시작');
-    // 남아있는 벽돌 찾기
-    const activeBricks = [];
-    
+    // 남아있는 벽돌 중 아래에 벽돌이 없는 것만 후보로
+    const candidateBricks = [];
     for (let r = 0; r < brickRowCount; r++) {
         for (let c = 0; c < brickColumnCount; c++) {
-            if (bricks[r][c] && bricks[r][c].status === 1) {
-                activeBricks.push(bricks[r][c]);
+            const brick = bricks[r][c];
+            if (brick && brick.status === 1) {
+                // 아래에 남아있는 벽돌이 있는지 확인
+                let hasBelow = false;
+                for (let rr = r + 1; rr < brickRowCount; rr++) {
+                    if (bricks[rr][c] && bricks[rr][c].status === 1) {
+                        hasBelow = true;
+                        break;
+                    }
+                }
+                if (!hasBelow) {
+                    candidateBricks.push(brick);
+                }
             }
         }
     }
-    
-    console.log('활성 벽돌 수:', activeBricks.length);
-    
-    // 남은 벽돌이 있으면 하나 선택
-    if (activeBricks.length > 0) {
-        const randomIndex = Math.floor(Math.random() * activeBricks.length);
-        console.log('선택된 벽돌 인덱스:', randomIndex);
-        targetBrick = activeBricks[randomIndex];
+    // 후보가 있으면 그 중에서 랜덤 선택
+    if (candidateBricks.length > 0) {
+        const randomIndex = Math.floor(Math.random() * candidateBricks.length);
+        targetBrick = candidateBricks[randomIndex];
         window.targetBrick = targetBrick;
-        console.log('선택된 targetBrick:', targetBrick);
-        
-        // 단어 프롬프트 표시 (showWordPrompt 함수 재사용)
         showWordPrompt(targetBrick);
     } else {
-        console.warn('선택할 수 있는 활성 벽돌이 없습니다!');
+        // 예외: 후보가 없으면 기존 방식대로 전체에서 선택
+        const activeBricks = [];
+        for (let r = 0; r < brickRowCount; r++) {
+            for (let c = 0; c < brickColumnCount; c++) {
+                if (bricks[r][c] && bricks[r][c].status === 1) {
+                    activeBricks.push(bricks[r][c]);
+                }
+            }
+        }
+        if (activeBricks.length > 0) {
+            const randomIndex = Math.floor(Math.random() * activeBricks.length);
+            targetBrick = activeBricks[randomIndex];
+            window.targetBrick = targetBrick;
+            showWordPrompt(targetBrick);
+        } else {
+            console.warn('선택할 수 있는 활성 벽돌이 없습니다!');
+        }
     }
 }
 
